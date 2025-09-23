@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
-from models.database import GlobalAggregation, GlobalModel, Client
+from db.database import GlobalAggregation, GlobalModel, Client
 
 class AggregationService:
     @staticmethod

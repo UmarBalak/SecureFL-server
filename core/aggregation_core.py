@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
-from models.database import GlobalModel, Client, SessionLocal
+from db.database import GlobalModel, Client, SessionLocal
 from services.blob_service import blob_service
 from services.aggregation_service import aggregation_service
 from services.websocket_service import connection_manager
