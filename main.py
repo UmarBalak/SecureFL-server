@@ -12,7 +12,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 # Local imports
 from config.settings import settings
-from models.database import get_db, Client, GlobalModel, GlobalAggregation, SessionLocal
+from db.database import get_db, Client, GlobalModel, GlobalAggregation, SessionLocal
 from services.websocket_service import connection_manager
 from utils.runtime_state import runtime_state
 from core.aggregation_core import aggregate_weights_core
