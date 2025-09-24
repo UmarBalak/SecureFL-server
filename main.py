@@ -311,8 +311,3 @@ class ProductionScheduler:
 # Initialize and start scheduler
 production_scheduler = ProductionScheduler(interval_minutes=5, ping_interval_seconds=60)
 production_scheduler.start()
-
-if __name__ == "__main__":
-    import uvicorn
-    logging.info("Starting Server...")
-    uvicorn.run(app, host="localhost", port=8080)
