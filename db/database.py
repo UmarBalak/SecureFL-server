@@ -58,10 +58,10 @@ class InitialModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     version = Column(Integer, unique=True, nullable=False)
     test_metrics = Column(JSON, nullable=True)
-    train_metrics = Column(JSON, nullable=True)
     model_architecture = Column(JSON, nullable=False)
     epochs = Column(Integer, nullable=False)
     batch_size = Column(Integer, nullable=False)
+    num_training_samples = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class GlobalAggregation(Base):
