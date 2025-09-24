@@ -9,6 +9,8 @@ fonttools==4.58.0
 h5py==3.13.0
 keras==2.14.0
 numpy==1.26.4
+pandas==2.3.0
+scikit-learn==1.7.0
 packaging==25.0
 protobuf==4.25.7
 psycopg2-binary==2.9.10

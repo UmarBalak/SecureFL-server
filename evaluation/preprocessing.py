@@ -5,7 +5,6 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
-from imblearn.over_sampling import SMOTE
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -18,7 +17,7 @@ class IoTDataPreprocessor:
         ]
         self.le_dict = {}
 
-    def preprocess_data(self, path="selected_features_dataset.csv", apply_smote=False):
+    def preprocess_data(self, path="selected_features_dataset.csv"):
         """
         Preprocess data that has already been through feature selection.
         This assumes the CSV contains only selected features + Attack_type column.
@@ -86,18 +85,8 @@ class IoTDataPreprocessor:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(feature_df)
         
-        #####################################################################################
-        if apply_smote:
-            # Optional: Apply SMOTE for class balancing
-            print("\nApplying SMOTE for data augmentation...")
-            smote = SMOTE(random_state=42)
-            X_resampled, y_resampled = smote.fit_resample(X_scaled, y_multiclass)
-            print("\n--- Class Distributions After SMOTE Augmentation ---")
-        else:
-            X_resampled, y_resampled = X_scaled, y_multiclass
-            print("\nSMOTE skipped.")
-        #####################################################################################
-        
+        X_resampled, y_resampled = X_scaled, y_multiclass
+
         unique, counts = np.unique(y_resampled, return_counts=True)
         for cls, count in zip(unique, counts):
             print(f"Class {cls}: {count} samples")
@@ -112,16 +101,16 @@ class IoTDataPreprocessor:
         return X_resampled, y_resampled, num_classes, scaler, feature_df.columns.tolist()
 
 # Usage example
-if __name__ == "__main__":
-    preprocessor = IoTDataPreprocessor()
+# if __name__ == "__main__":
+#     preprocessor = IoTDataPreprocessor()
     
-    # Process the feature-selected dataset
-    X, y, num_classes, scaler, features = preprocessor.preprocess_data(
-        "selected_features_dataset.csv",
-        apply_smote=False  # Set to True if you want SMOTE
-    )
+#     # Process the feature-selected dataset
+#     X, y, num_classes, scaler, features = preprocessor.preprocess_data(
+#         "selected_features_dataset.csv",
+#         apply_smote=False  # Set to True if you want SMOTE
+#     )
     
-    print(f"\nFinal Results:")
-    print(f"Features shape: {X.shape}")
-    print(f"Labels shape: {y.shape}")
-    print(f"Selected features count: {len(features)}")
+#     print(f"\nFinal Results:")
+#     print(f"Features shape: {X.shape}")
+#     print(f"Labels shape: {y.shape}")
+#     print(f"Selected features count: {len(features)}")

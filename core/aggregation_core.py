@@ -102,7 +102,6 @@ async def aggregate_weights_core(db: Session):
             logging.info("Prepare for test...")
             X_test, y_test, num_classes = preprocessor.preprocess_data(
                 TEST_DATA_PATH,
-                apply_smote=False
             )
             y_test_cat = to_categorical(y_test, num_classes=num_classes)
 
