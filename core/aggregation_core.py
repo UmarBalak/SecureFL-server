@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from fastapi import HTTPException
+from tensorflow.keras.utils import to_categorical
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from db.database import GlobalModel, Client, SessionLocal
@@ -10,6 +11,13 @@ from services.websocket_service import connection_manager
 from utils.runtime_state import runtime_state
 from functools import wraps
 import time
+
+from evaluation.preprocessing import IoTDataPreprocessor
+from evaluation.evaluate import evaluate_model
+
+preprocessor = IoTDataPreprocessor()
+
+TEST_DATA_PATH = "DATA/global_test.csv"
 
 def retry_db_operation(max_attempts=3, delay=2):
     def decorator(func):
@@ -86,8 +94,33 @@ async def aggregate_weights_core(db: Session):
                 weights_list, num_examples_list
             )
             logging.info("Aggregation completed successfully.")
+
+            ######################### BUILD NEW MODEL #############################
+            model = blob_service.get_model_architecture()
+            model.set_weights(avg_weights)
+
+            logging.info("Prepare for test...")
+            X_test, y_test, num_classes = preprocessor.preprocess_data(
+                TEST_DATA_PATH,
+                apply_smote=False
+            )
+            y_test_cat = to_categorical(y_test, num_classes=num_classes)
+
+            le = preprocessor.le_dict.get('Attack_type', None)
+            class_names = le.classes_.tolist() if le else None
             
-            if not avg_weights or not blob_service.save_weights_to_blob(avg_weights, filename):
+            eval_results = evaluate_model(model, X_test, y_test_cat, class_names=class_names)
+            test_metrics = eval_results['test']
+
+            metadata = {
+                "final_test_loss": str(test_metrics['loss']),
+                "final_test_accuracy": str(test_metrics['accuracy']),
+                "final_test_precision": str(test_metrics['macro_precision']),
+                "final_test_recall": str(test_metrics['macro_recall']),
+                "final_test_f1": str(test_metrics['macro_f1']),
+            }
+
+            if not avg_weights or not blob_service.save_weights_to_blob(avg_weights, filename, metadata):
                 logging.critical("Failed to save aggregated weights to blob")
                 raise HTTPException(status_code=500, detail="Failed to save aggregated weights")
             
@@ -97,8 +130,9 @@ async def aggregate_weights_core(db: Session):
             contributing_client_ids = [id for id, _ in weights_list_with_ids]
             new_model = GlobalModel(
                 version=runtime_state.latest_version,
+                test_metrics=test_metrics,
                 num_clients_contributed=len(weights_list),
-                client_ids=",".join(contributing_client_ids)
+                client_ids=contributing_client_ids
             )
             new_db.add(new_model)
             

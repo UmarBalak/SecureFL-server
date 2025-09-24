@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, DateTime, Table, Integer, ForeignKey
+from sqlalchemy import create_engine, Column, String, DateTime, Table, Integer, ForeignKey, JSON
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from datetime import datetime
 from threading import Lock
@@ -47,10 +47,22 @@ class GlobalModel(Base):
     __tablename__ = "global_models"
     id = Column(Integer, primary_key=True, autoincrement=True)
     version = Column(Integer, unique=True, nullable=False)
+    test_metrics = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     num_clients_contributed = Column(Integer, default=0)
-    client_ids = Column(String)
+    client_ids = Column(JSON, nullable=False) 
     clients = relationship("Client", secondary=client_model_association, back_populates="models_contributed")
+
+class InitialModel(Base):
+    __tablename__ = "initial_model"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    version = Column(Integer, unique=True, nullable=False)
+    test_metrics = Column(JSON, nullable=True)
+    train_metrics = Column(JSON, nullable=True)
+    model_architecture = Column(JSON, nullable=False)
+    epochs = Column(Integer, nullable=False)
+    batch_size = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class GlobalAggregation(Base):
     __tablename__ = "global_aggregation"

@@ -89,8 +89,9 @@ class BlobService:
 
                         weights_list.append((client_id, weights))
                         new_last_aggregation_timestamp = max(new_last_aggregation_timestamp, timestamp_int)
-                else:
-                    logging.warning(f"Blob name does not match pattern: {blob.name}")
+                # else:
+                    # logging.warning(f"Blob name does not match pattern: {blob.name}")
+                    # logging.info(f"Blob name does not match pattern: {blob.name}")
 
             if not weights_list:
                 logging.info(f"No new weights found since {last_aggregation_timestamp}.")
@@ -106,7 +107,7 @@ class BlobService:
             if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)    
 
-    def save_weights_to_blob(self, weights: List[List[Dict[str, Any]]], filename: str) -> bool:
+    def save_weights_to_blob(self, weights: List[List[Dict[str, Any]]], filename: str, metadata) -> bool:
         temp_path = None
         try:
             # Load the model architecture to create a temporary model
@@ -129,7 +130,7 @@ class BlobService:
                 blob=filename
             )
             with open(temp_path, "rb") as file:
-                blob_client.upload_blob(file, overwrite=True)
+                blob_client.upload_blob(file, overwrite=True,  metadata=metadata)
 
             logging.info(f"Successfully saved weights to blob: {filename}")
             return True
