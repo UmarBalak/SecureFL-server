@@ -18,10 +18,10 @@ class Settings:
     CLIENT_NOTIFICATION_URL = os.getenv("CLIENT_NOTIFICATION_URL")
     
     # Security
-    ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "your_admin_secret_key")
+    ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
     
     # Constants
-    ARCH_BLOB_NAME = "model_architecture.h5"
+    ARCH_BLOB_NAME = "model_architecture.json"
     
     @classmethod
     def validate(cls):

@@ -19,40 +19,40 @@ class BlobService:
             raise
     
     def get_model_architecture(self) -> Optional[object]:
-        temp_path = None
         try:
             container_client = self.client_blob_service.get_container_client(settings.CLIENT_CONTAINER_NAME)
-            blob_client = container_client.get_blob_client(settings.ARCH_BLOB_NAME)
+            blob_client = container_client.get_blob_client(settings.ARCH_BLOB_NAME)  # Assume ARCH_BLOB_NAME ends in .json
             arch_data = blob_client.download_blob().readall()
-            
-            with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as temp_file:
-                temp_file.write(arch_data)
-                temp_path = temp_file.name
-            
-            model = keras.models.load_model(temp_path, compile=False)
-            model.summary()
+
+            # Decode the JSON data
+            arch_json = arch_data.decode('utf-8')
+            model = keras.models.model_from_json(arch_json)
+            logging.info("Successfully loaded model architecture from JSON")
             return model
         except Exception as e:
-            logging.error(f"Error loading model architecture: {e}")
+            logging.error(f"Error loading model architecture from JSON: {e}")
             return None
-        finally:
-            if temp_path and os.path.exists(temp_path):
-                os.unlink(temp_path)
-    
+        
     def load_weights_from_blob(self, last_aggregation_timestamp: int) -> Optional[Tuple[List[Tuple[str, List[Dict[str, Any]]]], List[int], List[float], int]]:
         temp_path = None
         try:
-            pattern = re.compile(r"localweights/client([0-9a-fA-F\-]+)_v\d+_(\d{8}_\d{6})\.pkl")
+            pattern = re.compile(r"localweights/client([0-9a-fA-F\-]+)_v\d+_(\d{8}_\d{6})\.h5")
             container_client = ContainerClient.from_container_url(
-                settings.LOCAL_CONTAINER_URL, 
+                settings.LOCAL_CONTAINER_URL,
                 credential=settings.CLIENT_CONTAINER_SAS_TOKEN
             )
-            
+
             weights_list = []
             num_examples_list = []
             loss_list = []
             new_last_aggregation_timestamp = last_aggregation_timestamp
-            
+
+            # Load model architecture to extract weights
+            model = self.get_model_architecture()
+            if not model:
+                logging.error("Failed to load model architecture for loading weights")
+                return None, [], [], last_aggregation_timestamp
+
             blobs = list(container_client.list_blobs())
             for blob in blobs:
                 logging.info(f"Processing blob: {blob.name}")
@@ -61,18 +61,19 @@ class BlobService:
                     client_id = match.group(1)
                     timestamp_str = match.group(2)
                     timestamp_int = int(timestamp_str.replace("_", ""))
-                    
+
                     if timestamp_int > last_aggregation_timestamp:
                         blob_client = container_client.get_blob_client(blob.name)
-                        
-                        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as temp_file:
+
+                        with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as temp_file:
                             download_stream = blob_client.download_blob()
                             temp_file.write(download_stream.readall())
                             temp_path = temp_file.name
-                        
-                        with open(temp_path, "rb") as f:
-                            weights = pickle.load(f)
-                        
+
+                        # Load weights into the model
+                        model.load_weights(temp_path)
+                        weights = model.get_weights()  # Get weights as a list of NumPy arrays
+
                         blob_metadata = blob_client.get_blob_properties().metadata
                         if blob_metadata:
                             num_examples = int(blob_metadata.get('num_examples', 0))
@@ -81,45 +82,55 @@ class BlobService:
                                 continue
                             num_examples_list.append(num_examples)
                             loss_list.append(loss)
-                        
+
                         if temp_path and os.path.exists(temp_path):
                             os.unlink(temp_path)
                             temp_path = None
-                        
+
                         weights_list.append((client_id, weights))
                         new_last_aggregation_timestamp = max(new_last_aggregation_timestamp, timestamp_int)
                 else:
                     logging.warning(f"Blob name does not match pattern: {blob.name}")
-            
+
             if not weights_list:
                 logging.info(f"No new weights found since {last_aggregation_timestamp}.")
                 return None, [], [], last_aggregation_timestamp
-            
+
             logging.info(f"Loaded weights from {len(weights_list)} files.")
             return weights_list, num_examples_list, loss_list, new_last_aggregation_timestamp
-        
+
         except Exception as e:
             logging.error(f"Error loading weights: {e}")
             return None, [], [], last_aggregation_timestamp
         finally:
             if temp_path and os.path.exists(temp_path):
-                os.unlink(temp_path)
-    
+                os.unlink(temp_path)    
+
     def save_weights_to_blob(self, weights: List[List[Dict[str, Any]]], filename: str) -> bool:
         temp_path = None
         try:
-            with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as temp_file:
+            # Load the model architecture to create a temporary model
+            model = self.get_model_architecture()
+            if not model:
+                logging.error("Failed to load model architecture for saving weights")
+                return False
+
+            # Set the aggregated weights to the model
+            model.set_weights(weights)
+
+            # Save weights to a temporary .h5 file
+            with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as temp_file:
                 temp_path = temp_file.name
-                with open(temp_path, "wb") as f:
-                    pickle.dump(weights, f)
-            
+                model.save_weights(temp_path)  # Save only weights in .h5 format
+
+            # Upload the .h5 file to blob storage
             blob_client = self.server_blob_service.get_blob_client(
-                container=settings.SERVER_CONTAINER_NAME, 
+                container=settings.SERVER_CONTAINER_NAME,
                 blob=filename
             )
             with open(temp_path, "rb") as file:
                 blob_client.upload_blob(file, overwrite=True)
-            
+
             logging.info(f"Successfully saved weights to blob: {filename}")
             return True
         except Exception as e:

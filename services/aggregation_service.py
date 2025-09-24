@@ -72,7 +72,7 @@ class AggregationService:
         return avg_weights
     
     @staticmethod
-    def get_versioned_filename(version: int, prefix="g", extension=".pkl"):
+    def get_versioned_filename(version: int, prefix="g", extension=".h5"):
         return f"{prefix}{version}{extension}"
 
 aggregation_service = AggregationService()
