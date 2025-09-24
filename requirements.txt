@@ -10,6 +10,8 @@ h5py==3.13.0
 keras==2.14.0
 numpy==1.26.4
 pandas==2.3.0
+matplotlib==3.9.2
+seaborn==0.13.2
 scikit-learn==1.7.0
 packaging==25.0
 protobuf==4.25.7
