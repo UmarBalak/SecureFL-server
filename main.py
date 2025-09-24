@@ -150,7 +150,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, db: Session =
         # Send latest model version
         latest_model = db.query(GlobalModel).order_by(GlobalModel.version.desc()).first()
         runtime_state.latest_version = latest_model.version if latest_model else 0
-        latest_model_version = f"g{runtime_state.latest_version}.pkl"
+        latest_model_version = f"g{runtime_state.latest_version}.h5"
         await websocket.send_text(f"LATEST_MODEL:{latest_model_version}")
         
         # Handle messages
