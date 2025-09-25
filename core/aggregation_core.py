@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 from fastapi import HTTPException
 from tensorflow.keras.utils import to_categorical
@@ -17,7 +18,10 @@ from evaluation.evaluate import evaluate_model
 
 preprocessor = IoTDataPreprocessor()
 
-TEST_DATA_PATH = "evaluation/DATA/global_test.csv"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(BASE_DIR, '..', 'evaluation', 'DATA', 'global_test.csv')
+
+TEST_DATA_PATH = csv_path
 
 def retry_db_operation(max_attempts=3, delay=2):
     def decorator(func):
