@@ -135,7 +135,7 @@ async def lifespan(app: FastAPI):
                 
                 scheduler.add_job(
                     scheduled_aggregate_weights,
-                    CronTrigger(minute="*/2"),  # Every 2 minutes for testing
+                    CronTrigger(hour=3, minute=0),  # Runs every day at 03:00
                     id='aggregate_weights',
                     name='Aggregate Weights',
                     replace_existing=True,
