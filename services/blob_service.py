@@ -76,8 +76,8 @@ class BlobService:
 
                         blob_metadata = blob_client.get_blob_properties().metadata
                         if blob_metadata:
-                            num_examples = int(blob_metadata.get('num_examples', 0))
-                            loss = float(blob_metadata.get('loss', 0.0))
+                            num_examples = int(blob_metadata.get('num_training_samples', 0))
+                            loss = float(blob_metadata.get('final_test_loss', 0.0))
                             if num_examples == 0:
                                 continue
                             num_examples_list.append(num_examples)
