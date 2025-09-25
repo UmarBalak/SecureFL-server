@@ -17,7 +17,7 @@ from evaluation.evaluate import evaluate_model
 
 preprocessor = IoTDataPreprocessor()
 
-TEST_DATA_PATH = "DATA/global_test.csv"
+TEST_DATA_PATH = "evaluation/DATA/global_test.csv"
 
 def retry_db_operation(max_attempts=3, delay=2):
     def decorator(func):
