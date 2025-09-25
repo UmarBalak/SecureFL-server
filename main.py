@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import uuid
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Response, Body
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,9 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+import atexit
 
 # Local imports
 from config.settings import settings
@@ -26,7 +28,85 @@ logging.basicConfig(
     handlers=[logging.FileHandler("server.log"), logging.StreamHandler()]
 )
 
-app = FastAPI()
+# Initialize scheduler globally
+scheduler = AsyncIOScheduler()
+
+# Database ping function - async for AsyncIOScheduler
+async def ping_database():
+    db = SessionLocal()
+    try:
+        # Use async execution
+        result = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: db.execute(text("SELECT 1"))
+        )
+        db.commit()
+        logging.debug("Database ping successful")
+    except Exception as e:
+        logging.error(f"Database ping failed: {e}")
+    finally:
+        db.close()
+
+# Scheduled weight aggregation function - async
+async def scheduled_aggregate_weights():
+    logging.info("Scheduled task: Starting weight aggregation process.")
+    db = SessionLocal()
+    try:
+        await aggregate_weights_core(db)
+        logging.info("Scheduled weight aggregation completed successfully.")
+    except Exception as e:
+        logging.error(f"Error during scheduled weight aggregation: {e}")
+    finally:
+        db.close()
+
+# Lifespan context manager for startup and shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logging.info("Starting up FastAPI application...")
+    
+    # Add scheduled jobs
+    scheduler.add_job(
+        ping_database,
+        IntervalTrigger(seconds=60),
+        id='database_ping',
+        name='Database Ping',
+        replace_existing=True
+    )
+    
+    scheduler.add_job(
+        scheduled_aggregate_weights,
+        CronTrigger(minute="*/2"),
+        id='aggregate_weights',
+        name='Aggregate Weights',
+        replace_existing=True
+    )
+    
+    # Start the scheduler
+    try:
+        scheduler.start()
+        logging.info("Scheduler started successfully!")
+        
+        # Log scheduled jobs
+        jobs = scheduler.get_jobs()
+        logging.info(f"Active scheduled jobs: {len(jobs)}")
+        for job in jobs:
+            logging.info(f"Job: {job.name} - Next run: {job.next_run_time}")
+            
+    except Exception as e:
+        logging.error(f"Failed to start scheduler: {e}")
+    
+    yield  # This is where the application runs
+    
+    # Shutdown
+    logging.info("Shutting down FastAPI application...")
+    try:
+        scheduler.shutdown(wait=False)
+        logging.info("Scheduler shutdown completed.")
+    except Exception as e:
+        logging.error(f"Error during scheduler shutdown: {e}")
+
+# Create FastAPI app with lifespan
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -213,30 +293,27 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, db: Session =
         
         logging.info(f"Cleanup completed for client {client_id}.")
 
+# Diagnostic endpoint to check scheduler status
+@app.get("/scheduler-status")
+async def scheduler_status():
+    if not scheduler.running:
+        return {"status": "not_running", "jobs": []}
+    
+    jobs = scheduler.get_jobs()
+    job_info = []
+    for job in jobs:
+        job_info.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": str(job.next_run_time),
+            "trigger": str(job.trigger)
+        })
+    
+    return {
+        "status": "running",
+        "job_count": len(jobs),
+        "jobs": job_info
+    }
 
-scheduler = BackgroundScheduler()
-
-@scheduler.scheduled_job(IntervalTrigger(seconds=60))
-def ping_database():
-    db = SessionLocal()
-    try:
-        db.execute(text("SELECT 1"))
-        db.commit()
-        logging.debug("Database ping successful")
-    except Exception as e:
-        logging.error(f"Database ping failed: {e}")
-    finally:
-        db.close()
-
-@scheduler.scheduled_job(CronTrigger(minute="*/5"))
-def scheduled_aggregate_weights():
-    logging.info("Scheduled task: Starting weight aggregation process.")
-    db = SessionLocal()
-    try:
-        asyncio.run(aggregate_weights_core(db))
-    except Exception as e:
-        logging.error(f"Error during scheduled weight aggregation: {e}")
-    finally:
-        db.close()
-
-scheduler.start()
+# Also ensure cleanup on process exit as backup
+atexit.register(lambda: scheduler.shutdown(wait=False) if scheduler.running else None)
