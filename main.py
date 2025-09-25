@@ -16,7 +16,7 @@ import atexit
 
 # Local imports
 from config.settings import settings
-from db.database import get_db, Client, GlobalModel, GlobalAggregation, SessionLocal
+from db.database import get_db, Client, GlobalModel, GlobalAggregation, InitialModel, SessionLocal
 from services.websocket_service import connection_manager
 from utils.runtime_state import runtime_state
 from core.aggregation_core import aggregate_weights_core
@@ -137,11 +137,13 @@ async def get_all_data(db: Session = Depends(get_db)):
     try:
         clients = db.execute(select(Client)).scalars().all()
         global_models = db.execute(select(GlobalModel)).scalars().all()
-        global_vars_table = db.execute(select(GlobalAggregation)).scalars().all()
+        global_aggregation = db.execute(select(GlobalAggregation)).scalars().all()
+        initial_model = db.execute(select(InitialModel)).scalars().all()
         return {
             "clients": clients,
             "global_models": global_models,
-            "global_aggregation": global_vars_table,
+            "global_aggregation": global_aggregation,
+            "initial_model": initial_model,
             "last_checked_timestamp": runtime_state.last_checked_timestamp
         }
     except Exception as e:
