@@ -7,8 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import text
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 # Local imports
 from config.settings import settings
@@ -24,20 +26,7 @@ logging.basicConfig(
     handlers=[logging.FileHandler("server.log"), logging.StreamHandler()]
 )
 
-# FastAPI app
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app):
-    # Startup
-    logging.info("Server starting up...")
-    production_scheduler.start()
-    yield
-    # Shutdown  
-    logging.info("Server shutting down...")
-    production_scheduler.stop()
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -224,90 +213,30 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, db: Session =
         
         logging.info(f"Cleanup completed for client {client_id}.")
 
-# Production scheduler for reliable task execution
-import threading
-import time
-from datetime import datetime, timedelta
-from sqlalchemy.sql import text
 
-class ProductionScheduler:
-    def __init__(self, interval_minutes=5, ping_interval_seconds=60):
-        self.interval_minutes = interval_minutes
-        self.ping_interval_seconds = ping_interval_seconds
-        self.running = False
-        self.thread = None
-        self.ping_thread = None
-        self.is_executing = False
-        
-    def start(self):
-        if self.running:
-            return
-        self.running = True
-        self.thread = threading.Thread(target=self._run_loop, daemon=True)
-        self.thread.start()
-        self.ping_thread = threading.Thread(target=self._ping_loop, daemon=True)
-        self.ping_thread.start()
-        logging.info(f"Scheduler started - running every {self.interval_minutes} minutes, pinging DB every {self.ping_interval_seconds} seconds")
-    
-    def stop(self):
-        self.running = False
-        if self.thread:
-            self.thread.join(timeout=5)
-        if self.ping_thread:
-            self.ping_thread.join(timeout=5)
-    
-    def _ping_loop(self):
-        while self.running:
-            db = None
-            for attempt in range(3):
-                try:
-                    db = SessionLocal()
-                    db.execute(text("SELECT 1"))
-                    db.commit()
-                    logging.debug("Database ping successful")
-                    break
-                except Exception as e:
-                    logging.error(f"Database ping failed (attempt {attempt + 1}/3): {e}")
-                    if attempt < 2:
-                        time.sleep(2)
-                finally:
-                    if db:
-                        db.close()
-            time.sleep(self.ping_interval_seconds)
-    
-    def _run_loop(self):
-        next_run = datetime.utcnow() + timedelta(minutes=self.interval_minutes)
-        while self.running:
-            current_time = datetime.utcnow()
-            if current_time >= next_run and not self.is_executing:
-                self._execute_task()
-                next_run = current_time + timedelta(minutes=self.interval_minutes)
-                logging.info(f"Next run scheduled for: {next_run}")
-            time.sleep(10)
-    
-    def _execute_task(self):
-        if self.is_executing:
-            return
-        def run_aggregation():
-            self.is_executing = True
-            db = None
-            try:
-                logging.info("Starting scheduled aggregation...")
-                db = SessionLocal()
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                result = loop.run_until_complete(aggregate_weights_core(db))
-                logging.info(f"Scheduled aggregation completed: {result}")
-            except Exception as e:
-                logging.error(f"Scheduled aggregation failed: {e}")
-            finally:
-                if db:
-                    db.close()
-                self.is_executing = False
-                if 'loop' in locals():
-                    loop.close()
-        threading.Thread(target=run_aggregation, daemon=True).start()
+scheduler = BackgroundScheduler()
 
-# Initialize and start scheduler
-production_scheduler = ProductionScheduler(interval_minutes=5, ping_interval_seconds=60)
-production_scheduler.start()
+@scheduler.scheduled_job(IntervalTrigger(seconds=60))
+def ping_database():
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        db.commit()
+        logging.debug("Database ping successful")
+    except Exception as e:
+        logging.error(f"Database ping failed: {e}")
+    finally:
+        db.close()
+
+@scheduler.scheduled_job(CronTrigger(minute="*/5"))
+def scheduled_aggregate_weights():
+    logging.info("Scheduled task: Starting weight aggregation process.")
+    db = SessionLocal()
+    try:
+        asyncio.run(aggregate_weights_core(db))
+    except Exception as e:
+        logging.error(f"Error during scheduled weight aggregation: {e}")
+    finally:
+        db.close()
+
+scheduler.start()
