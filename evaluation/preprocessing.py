@@ -98,7 +98,7 @@ class IoTDataPreprocessor:
         print(f"Number of classes: {num_classes}")
         print(f"Selected features: {feature_df.columns.tolist()}")
         
-        return X_resampled, y_resampled, num_classes, scaler, feature_df.columns.tolist()
+        return X_resampled, y_resampled, num_classes
 
 # Usage example
 # if __name__ == "__main__":
