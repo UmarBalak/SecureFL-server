@@ -36,7 +36,7 @@ class BlobService:
     def load_weights_from_blob(self, last_aggregation_timestamp: int) -> Optional[Tuple[List[Tuple[str, List[Dict[str, Any]]]], List[int], List[float], int]]:
         temp_path = None
         try:
-            pattern = re.compile(r"localweights/client([0-9a-fA-F\-]+)_v\d+_(\d{8}_\d{6})\.h5")
+            pattern = re.compile(r"localmodels/client([0-9a-fA-F\-]+)_v\d+_(\d{8}_\d{6})\.h5")
             container_client = ContainerClient.from_container_url(
                 settings.LOCAL_CONTAINER_URL,
                 credential=settings.CLIENT_CONTAINER_SAS_TOKEN
@@ -89,9 +89,9 @@ class BlobService:
 
                         weights_list.append((client_id, weights))
                         new_last_aggregation_timestamp = max(new_last_aggregation_timestamp, timestamp_int)
-                # else:
-                    # logging.warning(f"Blob name does not match pattern: {blob.name}")
-                    # logging.info(f"Blob name does not match pattern: {blob.name}")
+                else:
+                    logging.warning(f"Blob name does not match pattern: {blob.name}")
+                    logging.info(f"Blob name does not match pattern: {blob.name}")
 
             if not weights_list:
                 logging.info(f"No new weights found since {last_aggregation_timestamp}.")
