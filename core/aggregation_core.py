@@ -103,6 +103,14 @@ async def aggregate_weights_core(db: Session):
             model = blob_service.get_model_architecture()
             model.set_weights(avg_weights)
 
+            # Model compilation is necessary to evaluate the model
+            model.compile(
+                optimizer='adam',
+                loss='categorical_crossentropy',
+                metrics=['accuracy']
+            )
+            logging.info("Model compiled successfully for evaluation")
+
             logging.info("Prepare for test...")
             X_test, y_test, num_classes = preprocessor.preprocess_data(
                 TEST_DATA_PATH,
