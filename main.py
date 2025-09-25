@@ -317,5 +317,24 @@ async def scheduler_status():
         "jobs": job_info
     }
 
+# Manual trigger endpoints for testing
+@app.post("/trigger-db-ping")
+async def trigger_database_ping():
+    try:
+        await ping_database()
+        return {"status": "success", "message": "Database ping executed"}
+    except Exception as e:
+        logging.error(f"Manual database ping failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.post("/trigger-aggregation")
+async def trigger_weight_aggregation():
+    try:
+        await scheduled_aggregate_weights()
+        return {"status": "success", "message": "Weight aggregation executed"}
+    except Exception as e:
+        logging.error(f"Manual weight aggregation failed: {e}")
+        return {"status": "error", "message": str(e)}
+    
 # Also ensure cleanup on process exit as backup
 atexit.register(lambda: scheduler.shutdown(wait=False) if scheduler.running else None)
