@@ -19,7 +19,7 @@ from evaluation.evaluate import evaluate_model
 preprocessor = IoTDataPreprocessor()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-csv_path = os.path.join(BASE_DIR, '..', 'evaluation', 'DATA', 'global_test.csv')
+csv_path = os.path.join(BASE_DIR, '..', 'evaluation', 'DATA', 'global_test_10.csv')
 
 TEST_DATA_PATH = csv_path
 
