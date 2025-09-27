@@ -46,6 +46,18 @@ def evaluate_model(model, X_test, y_test_cat, class_names=None):
         print(f"Macro Precision: {macro_precision:.4f}, Recall: {macro_recall:.4f}, F1-Score: {macro_f1:.4f}")
         print(f"Weighted Precision: {weighted_precision:.4f}, Recall: {weighted_recall:.4f}, F1-Score: {weighted_f1:.4f}")
         
+        # Ensure plots directory exists
+        os.makedirs('plots', exist_ok=True)
+        
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names or range(len(cm)), yticklabels=class_names or range(len(cm)))
+        plt.title(f'{dataset_name} Confusion Matrix')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.tight_layout()
+        plt.savefig(f'plots/{dataset_name.lower().replace(" ", "_")}_confusion_matrix.png')
+        plt.close()
+        
         return {
             'loss': loss,
             'accuracy': acc,

@@ -13,15 +13,16 @@ from utils.runtime_state import runtime_state
 from functools import wraps
 import time
 
-from evaluation.preprocessing import IoTDataPreprocessor
+from evaluation.preprocessing_server import IoTDataPreprocessor
 from evaluation.evaluate import evaluate_model
-
-preprocessor = IoTDataPreprocessor()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 csv_path = os.path.join(BASE_DIR, '..', 'evaluation', 'DATA', 'global_test.csv')
 
 TEST_DATA_PATH = csv_path
+
+ARTIFACTS_PATH = "artifacts"
+FIXED_NUM_CLASSES = 15
 
 def retry_db_operation(max_attempts=3, delay=2):
     def decorator(func):
@@ -112,13 +113,32 @@ async def aggregate_weights_core(db: Session):
             logging.info("Model compiled successfully for evaluation")
 
             logging.info("Prepare for test...")
-            X_test, y_test, num_classes = preprocessor.preprocess_data(
+
+            print("🔧 Initializing preprocessor with server artifacts...")
+            try:
+                preprocessor = IoTDataPreprocessor(artifacts_path=ARTIFACTS_PATH)
+            except Exception as e:
+                print(f"❌ Preprocessing initialization failed: {e}")
+                print("💡 Required files: preprocessor.pkl, global_label_encoder.pkl, feature_info.pkl")
+                raise
+
+            X_test, y_test, num_classes_test = preprocessor.preprocess_data(
                 TEST_DATA_PATH,
             )
-            y_test_cat = to_categorical(y_test, num_classes=num_classes)
+            y_test_cat = to_categorical(y_test, num_classes=FIXED_NUM_CLASSES)
 
-            le = preprocessor.le_dict.get('Attack_type', None)
-            class_names = le.classes_.tolist() if le else None
+            # FIXED: Get class names correctly from server's global label encoder
+            try:
+                class_names = preprocessor.global_le.classes_.tolist()  # ✅ Correct attribute
+                print(f"✅ Class names loaded: {class_names}")
+            except AttributeError:
+                # Fallback to hardcoded class names
+                class_names = [
+                    'Backdoor', 'DDoS_HTTP', 'DDoS_ICMP', 'DDoS_TCP', 'DDoS_UDP',
+                    'Fingerprinting', 'MITM', 'Normal', 'Password', 'Port_Scanning',
+                    'Ransomware', 'SQL_injection', 'Uploading', 'Vulnerability_scanner', 'XSS'
+                ]
+                print(f"⚠️ Using fallback class names: {len(class_names)} classes")
             
             eval_results = evaluate_model(model, X_test, y_test_cat, class_names=class_names)
             test_metrics = eval_results['test']
