@@ -114,12 +114,12 @@ async def aggregate_weights_core(db: Session):
 
             logging.info("Prepare for test...")
 
-            print("🔧 Initializing preprocessor with server artifacts...")
+            logging.info("🔧 Initializing preprocessor with server artifacts...")
             try:
                 preprocessor = IoTDataPreprocessor(artifacts_path=ARTIFACTS_PATH)
             except Exception as e:
-                print(f"❌ Preprocessing initialization failed: {e}")
-                print("💡 Required files: preprocessor.pkl, global_label_encoder.pkl, feature_info.pkl")
+                logging.error(f"❌ Preprocessing initialization failed: {e}")
+                logging.error("💡 Required files: preprocessor.pkl, global_label_encoder.pkl, feature_info.pkl")
                 raise
 
             X_test, y_test, num_classes_test = preprocessor.preprocess_data(
@@ -130,15 +130,15 @@ async def aggregate_weights_core(db: Session):
             # FIXED: Get class names correctly from server's global label encoder
             try:
                 class_names = preprocessor.global_le.classes_.tolist()  # ✅ Correct attribute
-                print(f"✅ Class names loaded: {class_names}")
+                logging.info(f"✅ Class names loaded: {class_names}")
             except AttributeError:
                 # Fallback to hardcoded class names
                 class_names = [
                     'Backdoor', 'DDoS_HTTP', 'DDoS_ICMP', 'DDoS_TCP', 'DDoS_UDP',
-                    'Fingerprinting', 'MITM', 'Normal', 'Password', 'Port_Scanning',
+                    'Fingerlogging.infoing', 'MITM', 'Normal', 'Password', 'Port_Scanning',
                     'Ransomware', 'SQL_injection', 'Uploading', 'Vulnerability_scanner', 'XSS'
                 ]
-                print(f"⚠️ Using fallback class names: {len(class_names)} classes")
+                logging.error(f"⚠️ Using fallback class names: {len(class_names)} classes")
             
             eval_results = evaluate_model(model, X_test, y_test_cat, class_names=class_names)
             test_metrics = eval_results['test']
