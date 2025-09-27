@@ -246,6 +246,7 @@ async def fl_server_aggregation_complete(db: Session, global_run_id=None):
                 client_ids=contributing_client_ids,
                 model_version=current_fl_round
             )
+            fl_tracker.log_global_evaluation_results(test_metrics, class_names)
 
             # Save FL model with comprehensive metadata
             metadata = {
