@@ -21,7 +21,7 @@ csv_path = os.path.join(BASE_DIR, '..', 'evaluation', 'DATA', 'global_test.csv')
 
 TEST_DATA_PATH = csv_path
 
-ARTIFACTS_PATH = "artifacts"
+ARTIFACTS_PATH = os.path.join(BASE_DIR, '..', 'evaluation', 'artifacts')
 FIXED_NUM_CLASSES = 15
 
 def retry_db_operation(max_attempts=3, delay=2):
