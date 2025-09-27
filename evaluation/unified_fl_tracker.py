@@ -26,7 +26,6 @@ class FederatedLearningTracker:
         self.server_run = None
         self.current_run = None
         self.fl_round = 0
-        self.all_metrics = []
         
         # Default config for cybersecurity FL
         self.default_config = {
@@ -215,7 +214,6 @@ class FederatedLearningTracker:
             "global_model/macro_precision": test_metrics.get("macro_precision", 0),
             "global_model/macro_recall": test_metrics.get("macro_recall", 0),
             "client_contribution/num_clients": num_contributing_clients,
-            "client_contribution/participation_rate": num_contributing_clients / self.default_config.get("total_clients", 10),
             "aggregation/timestamp": datetime.now().timestamp()
         }
         
@@ -242,109 +240,12 @@ class FederatedLearningTracker:
         # Client participation tracking
         if client_ids:
             round_metrics["client_contribution/active_clients"] = len(set(client_ids))
-            client_freq = pd.Series(client_ids).value_counts().to_dict()
-            for client_id, freq in client_freq.items():
-                round_metrics[f"client_contribution/client_{client_id}"] = freq
         
         wandb.log(round_metrics)
-        
-        # Store for trend analysis
-        metric_record = {
-            "fl_round": fl_round,
-            "timestamp": datetime.now(),
-            **test_metrics,
-            "num_contributing_clients": num_contributing_clients
-        }
-        self.all_metrics.append(metric_record)
         
         print(f"📊 FL Round {fl_round}: Logged to WandB")
         print(f"   Accuracy: {test_metrics.get('accuracy', 0):.4f}")
         print(f"   Macro F1: {test_metrics.get('macro_f1', 0):.4f}")
-    
-    def create_fl_performance_trends(self):
-        """
-        Create FL performance trend visualizations
-        """
-        if len(self.all_metrics) < 2:
-            print("⚠️ Need at least 2 FL rounds for trends")
-            return None
-        
-        df = pd.DataFrame(self.all_metrics)
-        
-        # Create comprehensive FL trends
-        fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=("FL Accuracy Progress", "FL Loss Progress", 
-                          "F1-Score Evolution", "Client Participation"),
-            specs=[[{"secondary_y": False}, {"secondary_y": False}],
-                   [{"secondary_y": False}, {"secondary_y": False}]]
-        )
-        
-        # Accuracy trend
-        fig.add_trace(
-            go.Scatter(x=df['fl_round'], y=df['accuracy'], 
-                      mode='lines+markers', name='Test Accuracy',
-                      line=dict(color='#2E8B57', width=3),
-                      marker=dict(size=10)),
-            row=1, col=1
-        )
-        
-        # Loss trend
-        fig.add_trace(
-            go.Scatter(x=df['fl_round'], y=df['loss'],
-                      mode='lines+markers', name='Test Loss',
-                      line=dict(color='#DC143C', width=3),
-                      marker=dict(size=10)),
-            row=1, col=2
-        )
-        
-        # F1-Score trends
-        fig.add_trace(
-            go.Scatter(x=df['fl_round'], y=df['macro_f1'],
-                      mode='lines+markers', name='Macro F1',
-                      line=dict(color='#4169E1', width=3),
-                      marker=dict(size=10)),
-            row=2, col=1
-        )
-        fig.add_trace(
-            go.Scatter(x=df['fl_round'], y=df.get('weighted_f1', df['macro_f1']),
-                      mode='lines+markers', name='Weighted F1',
-                      line=dict(color='#FF8C00', width=3),
-                      marker=dict(size=10)),
-            row=2, col=1
-        )
-        
-        # Client participation
-        fig.add_trace(
-            go.Scatter(x=df['fl_round'], y=df['num_contributing_clients'],
-                      mode='lines+markers', name='Contributing Clients',
-                      line=dict(color='#9370DB', width=3),
-                      marker=dict(size=10)),
-            row=2, col=2
-        )
-        
-        fig.update_layout(
-            title={
-                'text': 'Federated Learning Performance Evolution - Cybersecurity Dataset',
-                'x': 0.5,
-                'xanchor': 'center',
-                'font': {'size': 18}
-            },
-            height=800,
-            showlegend=True,
-            template="plotly_white"
-        )
-        
-        # Update axes
-        fig.update_xaxes(title_text="FL Round", row=2, col=1)
-        fig.update_xaxes(title_text="FL Round", row=2, col=2)
-        fig.update_yaxes(title_text="Accuracy", row=1, col=1)
-        fig.update_yaxes(title_text="Loss", row=1, col=2)
-        fig.update_yaxes(title_text="F1-Score", row=2, col=1)
-        fig.update_yaxes(title_text="Clients", row=2, col=2)
-        
-        wandb.log({"fl_performance_trends": wandb.Html(fig.to_html())})
-        return fig
     
     def log_model_architecture(self, model_summary_str):
         """
@@ -364,13 +265,6 @@ class FederatedLearningTracker:
         if summary_metrics:
             for key, value in summary_metrics.items():
                 wandb.run.summary[key] = value
-        
-        # Create final visualizations for FL runs
-        if len(self.all_metrics) > 1:
-            try:
-                self.create_fl_performance_trends()
-            except Exception as e:
-                print(f"⚠️ Could not create final visualizations: {e}")
         
         print(f"🎯 WandB run finalized: {wandb.run.name}")
         wandb.finish()

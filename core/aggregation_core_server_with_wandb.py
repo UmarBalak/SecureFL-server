@@ -247,14 +247,6 @@ async def fl_server_aggregation_complete(db: Session, global_run_id=None):
                 model_version=current_fl_round
             )
 
-            # Create FL performance trends (after round 2+)
-            if current_fl_round > 1:
-                try:
-                    fl_tracker.create_fl_performance_trends()
-                    print("📈 FL performance trends updated")
-                except Exception as e:
-                    logging.warning(f"Could not create FL trends: {e}")
-
             # Save FL model with comprehensive metadata
             metadata = {
             "final_test_loss": str(test_metrics.get('loss', 'nan')),
