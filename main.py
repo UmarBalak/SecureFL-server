@@ -122,12 +122,12 @@ async def lifespan(app: FastAPI):
             try:
                 scheduler.add_job(
                     ping_database,
-                    IntervalTrigger(seconds=60),
+                    IntervalTrigger(minutes=10),  # run every 10 minutes
                     id='database_ping',
                     name='Database Ping',
                     replace_existing=True,
-                    max_instances=1,  # Prevent overlapping executions
-                    misfire_grace_time=30
+                    max_instances=1,   # Prevent overlapping executions
+                    misfire_grace_time=60
                 )
                 logger.info("=== DATABASE PING JOB ADDED ===")
                 
