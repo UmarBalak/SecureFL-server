@@ -5,24 +5,29 @@ from fastapi import HTTPException
 from tensorflow.keras.utils import to_categorical
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
-from db.database import GlobalModel, Client, SessionLocal
-from services.blob_service import blob_service
-from services.aggregation_service import aggregation_service
-from services.websocket_service import connection_manager
-from utils.runtime_state import runtime_state
 from functools import wraps
 import time
-
-# FL Server imports
-from evaluation.evaluate_server_with_wandb import evaluate_model_with_wandb
-from evaluation.unified_fl_tracker import fl_tracker
-from evaluation.preprocessing_server import IoTDataPreprocessor
-
-# Modern WandB imports
 import wandb
 
-# Configuration
+import sys
+import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(BASE_DIR, '..', 'evaluation'))
+sys.path.insert(0, os.path.join(BASE_DIR, '..', 'services'))
+sys.path.insert(0, os.path.join(BASE_DIR, '..', 'db'))
+sys.path.insert(0, os.path.join(BASE_DIR, '..', 'utils'))
+
+# Local imports
+from unified_fl_tracker import fl_tracker
+from evaluate_server_with_wandb import evaluate_model_with_wandb
+from preprocessing_server import IoTDataPreprocessor
+from database import GlobalModel, Client, SessionLocal
+from blob_service import blob_service
+from aggregation_service import aggregation_service
+from websocket_service import connection_manager
+from runtime_state import runtime_state
+
+# Configuration
 TEST_DATA_PATH = os.path.join(BASE_DIR, '..', 'evaluation', 'DATA', 'global_test.csv')
 ARTIFACTS_PATH = os.path.join(BASE_DIR, '..', 'evaluation', 'artifacts')
 FIXED_NUM_CLASSES = 15
