@@ -251,25 +251,15 @@ async def fl_server_aggregation_complete(db: Session, global_run_id=None):
                     logging.warning(f"Could not create FL trends: {e}")
 
             # Save FL model with comprehensive metadata
-            fl_metadata = {
-                "fl_round": str(current_fl_round),
-                "aggregation_method": "FedAvg",
-                "contributing_clients": len(weights_list_with_ids),
-                "total_samples_aggregated": str(total_samples),
-                "client_ids": contributing_client_ids,
-                "client_sample_distribution": dict(zip(contributing_client_ids, num_examples_list)),
-                "test_accuracy": str(test_metrics['accuracy']),
-                "test_loss": str(test_metrics['loss']),
-                "test_macro_f1": str(test_metrics['macro_f1']),
-                "test_weighted_f1": str(test_metrics['weighted_f1']),
-                "test_macro_precision": str(test_metrics['macro_precision']),
-                "test_macro_recall": str(test_metrics['macro_recall']),
-                "evaluation_timestamp": datetime.now().isoformat(),
-                "wandb_server_run_id": wandb.run.id if wandb.run else "none",
-                "wandb_server_url": wandb.run.url if wandb.run else "none"
+            metadata = {
+            "final_test_loss": str(test_metrics.get('loss', 'nan')),
+            "final_test_accuracy": str(test_metrics.get('accuracy', 'nan')),
+            "final_test_precision": str(test_metrics.get('macro_precision', 'nan')),
+            "final_test_recall": str(test_metrics.get('macro_recall', 'nan')),
+            "final_test_f1": str(test_metrics.get('macro_f1', 'nan')),
             }
 
-            if not avg_weights or not blob_service.save_weights_to_blob(avg_weights, filename, fl_metadata):
+            if not avg_weights or not blob_service.save_weights_to_blob(avg_weights, filename, metadata):
                 logging.critical("❌ Failed to save FL aggregated weights")
                 raise HTTPException(status_code=500, detail="Failed to save aggregated weights")
 
