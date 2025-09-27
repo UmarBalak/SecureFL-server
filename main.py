@@ -35,12 +35,10 @@ try:
     from db.database import get_db, Client, GlobalModel, GlobalAggregation, InitialModel, SessionLocal
     from services.websocket_service import connection_manager
     from utils.runtime_state import runtime_state
-    from core.aggregation_core import aggregate_weights_core
+    from core.aggregation_core_server_with_wandb import aggregate_weights_core
     logger.info("✓ Local import successful")
 except Exception as e:
     logger.error(f"✗ Failed to import local modules: {e}")
-
-
 
 
 # Initialize scheduler globally - but don't start it yet
