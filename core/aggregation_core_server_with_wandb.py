@@ -14,9 +14,9 @@ from functools import wraps
 import time
 
 # FL Server imports
-from evaluate_server_with_wandb import evaluate_model_with_wandb
-from unified_fl_tracker import fl_tracker
-from preprocessing_server import IoTDataPreprocessor
+from evaluation.evaluate_server_with_wandb import evaluate_model_with_wandb
+from evaluation.unified_fl_tracker import fl_tracker
+from evaluation.preprocessing_server import IoTDataPreprocessor
 
 # Modern WandB imports
 import wandb
