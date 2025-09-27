@@ -64,7 +64,7 @@ class FederatedLearningTracker:
             config=final_config,
             tags=["global_training", "initial_model", "baseline", "cybersecurity"],
             notes="Initial global model training - baseline for FL system",
-            reinit=False
+            reinit="return_previous"
         )
         
         self.current_run = self.global_run
@@ -102,7 +102,7 @@ class FederatedLearningTracker:
             config=final_config,
             tags=["server_aggregation", "federated_learning", "fl_rounds", "cybersecurity"],
             notes=f"FL Server Aggregation - linked to global run: {global_run_id}",
-            reinit=True
+            reinit="finish_previous"
         )
         
         self.current_run = self.server_run
