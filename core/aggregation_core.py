@@ -12,6 +12,7 @@ from services.websocket_service import connection_manager
 from utils.runtime_state import runtime_state
 from functools import wraps
 import time
+import json
 
 from evaluation.preprocessing_server import IoTDataPreprocessor
 from evaluation.evaluate import evaluate_model
@@ -151,9 +152,26 @@ async def aggregate_weights_core(db: Session):
                 "final_test_f1": str(test_metrics['macro_f1']),
             }
 
+            complete_metadata = {
+                "test_metrics": test_metrics,
+                "num_training_samples": None,
+                "data_classes_present": None,
+                "batch_size": None,
+                "learning_rate": None,
+                "differential_privacy": False,
+                "noise_multiplier": None,
+                "final_epsilon": None,
+                "delta": None
+            }
+
             if not avg_weights or not blob_service.save_weights_to_blob(avg_weights, filename, metadata):
                 logging.critical("Failed to save aggregated weights to blob")
                 raise HTTPException(status_code=500, detail="Failed to save aggregated weights")
+            
+            metadata_filename = aggregation_service.get_versioned_metadata_filename(runtime_state.latest_version)
+            if not blob_service.upload_json_to_blob(complete_metadata, metadata_filename, {}):
+                logging.critical("Failed to save metadata file to blob")
+                raise HTTPException(status_code=500, detail="Failed to save metadata file")
             
             aggregation_service.save_last_aggregation_timestamp(new_db, new_timestamp)
             logging.info(f"New timestamp saved to the database: {new_timestamp}")

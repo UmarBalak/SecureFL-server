@@ -74,5 +74,9 @@ class AggregationService:
     @staticmethod
     def get_versioned_filename(version: int, prefix="g", extension=".h5"):
         return f"{prefix}{version}{extension}"
+    
+    @staticmethod
+    def get_versioned_metadata_filename(version: int, prefix="g", extension=".json"):
+        return f"{prefix}{version}{extension}"
 
 aggregation_service = AggregationService()

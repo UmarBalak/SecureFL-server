@@ -3,6 +3,7 @@ import tempfile
 import os
 import pickle
 import re
+import json
 from typing import List, Optional, Tuple, Any, Dict
 from azure.storage.blob import BlobServiceClient, ContainerClient
 from tensorflow import keras
@@ -137,6 +138,44 @@ class BlobService:
         except Exception as e:
             logging.error(f"Error saving weights to blob: {e}")
             return False
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.unlink(temp_path)
+
+    def upload_json_to_blob(self, data: Dict[str, Any], filename: str, metadata: Dict[str, str]) -> bool:
+        """
+        Serialize a Python dictionary to JSON and upload it to Azure Blob Storage.
+
+        Args:
+            data:        Dictionary to serialize as JSON.
+            filename:    Name of the blob (e.g., 'metrics.json').
+            metadata:    Key–value metadata to attach to the blob.
+
+        Returns:
+            bool: True on success, False on failure.
+        """
+        temp_path = None
+        try:
+            # Create a temporary JSON file
+            with tempfile.NamedTemporaryFile(suffix='.json', delete=False, mode='w', encoding='utf-8') as temp_file:
+                temp_path = temp_file.name
+                json.dump(data, temp_file, ensure_ascii=False, indent=2)
+
+            # Upload JSON file to Azure Blob Storage
+            blob_client = self.server_blob_service.get_blob_client(
+                container=settings.SERVER_CONTAINER_NAME,
+                blob=filename
+            )
+            with open(temp_path, "rb") as file:
+                blob_client.upload_blob(file, overwrite=True, metadata=metadata)
+
+            logging.info(f"Successfully uploaded JSON to blob: {filename}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error uploading JSON to blob: {e}")
+            return False
+
         finally:
             if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
