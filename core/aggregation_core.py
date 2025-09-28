@@ -150,6 +150,7 @@ async def aggregate_weights_core(db: Session):
                 "final_test_precision": str(test_metrics['macro_precision']),
                 "final_test_recall": str(test_metrics['macro_recall']),
                 "final_test_f1": str(test_metrics['macro_f1']),
+                "num_training_samples": None,
             }
 
             complete_metadata = {
